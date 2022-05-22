@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src=""
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("");
+
+      gtag("");
+    </script>
+
+    <link
+      href="https://fonts.googleapis.com/css?family=Open Sans"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style2.css" />
+    <link rel="icon" href="img/icon.png" />
+
+    <script
+      src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"
+      type="application/javascript"
+    ></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/js-sha3/0.8.0/sha3.min.js"
+      integrity="sha512-PmGDkK2UHGzTUfkFGcJ8YSrD/swUXekcca+1wWlrwALIZho9JX+3ddaaI9wmmf8PmgDIpMtx6TU8YBJAZS0mPQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <title>ENS Reserved List Club</title>
+  </head>
+  <body onload="loadMtgs();">
+    <div class="container">
+      <div class="toptitle">
+        <h1>ENS Reserved List Club</h1>
+        <a href="https://twitter.com/ohhkaneda" target="_blank"
+          >ohhkaneda.eth</a
+        >
+        <img src="img/twitter-logo.png" width="22px" />
+        <p>by</p>
+      </div>
+      <h2>The most valuable MTG .eth names</h2>
+      <div class="filter-container">
+
+        <label class="filter-label">Buy Now:</label>
+        <label class="switch">
+          <input type="checkbox" id="buy-now-filter" onclick="filterList()" />
+          <span class="slider round"></span>
+        </label>
+        <div class="sort-switch">
+          <label class="filter-label">Sort by Ξ</label>
+          <label class="switch">
+            <input type="checkbox" id="sort-by-price" onclick="sortList()" />
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+      <div class="list-length-info">0 Item</div>
+      <div class="mtg-list"></div>
+    </div>
+  </div>
+      <div class="list-length-info2">0</div>
+      <div class="mtg-cardprice"></div>
+      <p class="footer"></p>
+    </div>
+
+    <script>
+      const LOCAL_TEST = false;
+      const LOCAL_STORAGE_VERSION = 13;
+      const CACHE_INVALIDATION_TIME = 300 * 1000;
+      const PRE_PUNK_CUT_OFF = 424;
+
+      const TOKEN_API_URL = "https://api.reservoir.tools/tokens/v4";
+      const TOKEN_API_LIMIT = 50;
+
+      var mtgs;
+
+      function loadMtgs() {
+        if (
+          localStorage.version == null ||
+          localStorage.version < LOCAL_STORAGE_VERSION
+        ) {
+          localStorage.clear();
+          console.log("localStorage cleared");
+          localStorage.version = LOCAL_STORAGE_VERSION;
+        }
+
+        if (localStorage.mtgs == null) {
+          fetchMtgs();
+        } else {
+          mtgs = JSON.parse(localStorage.mtgs);
+          render();
+        }
+      }
+
+      function fetchMtgs() {
+        if (LOCAL_TEST) {
+          storeMtgs(testJson.jsonData);
+        } else {
+          fetch("./mtgens.json")
+            .then((response) => response.json())
+            .then((jsonData) => storeMtgs(jsonData));
+        }
+      }
+
+      function storeMtgs(jsonData) {
+        mtgs = new Object();
+
+        for (var key in jsonData) {
+          var mtgNameHash = getMtgHash(String(jsonData[key].name));
+          mtgs[mtgNameHash] = jsonData[key];
+          mtgs[mtgNameHash].price = 0;
+        }
+
+        localStorage.pricesUpdatedAt = -1;
+        localStorage.mtgs = JSON.stringify(mtgs);
+
+        render();
+      }
+
+      function render() {
+        for (var nameHash in mtgs) {
+          renderMtg(
+            mtgs[nameHash].id,
+            String(mtgs[nameHash].name),
+            mtgs[nameHash].price,
+            mtgs[nameHash].state,
+            mtgs[nameHash].cardprice,
+            nameHash
+          );
+        }
+
+        updateListLengthInfo(Object.keys(mtgs).length);
+
+        fetchTokenPrices();
+      }
+
+      function renderMtg(
+        mtgId,
+        mtgName,
+        mtgPrice,
+        mtgState,
+        mtgCardprice,
+        mtgHash
+      ) {
+        const mtgOSLink =
+          "https://opensea.io/assets/0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85/" +
+          mtgHash;
+        const mtgLooksLink =
+          "https://looksrare.org/collections/0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85/" +
+          mtgHash;
+        const mtgX2y2Link =
+          "https://x2y2.io/eth/0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85/" + mtgHash;
+        const mtgENSLink =
+          "https://app.ens.domains/name/" + mtgName + ".eth/details";
+
+        mtgDiv = $('<div class="mtg" id="' + mtgHash + '">');
+        mtgCardpriceDiv = $(
+          '<div class="mtg-cardprice">' + mtgCardprice + "</div>"
+        );
+        mtgIdDiv = $('<div class="mtg-id">#' + mtgId + "</div>");
+        mtgNameDiv = $(
+          '<div class="mtg-name" style="background-color:' +
+            getCellColor(mtgPrice) +
+            '">' +
+            mtgName +
+            ".eth</div>"
+        );
+        mtgPriceDiv = $(
+          ' <div class="mtg-price">' + getPriceLabel(mtgPrice) + "</div>"
+        );
+        mtgStateDiv = $('<div class="mtg-state">' + mtgState + "</div>");
+
+        mtgOSLinkDiv = $(
+          '<div class="mtg-oslink"><a href="' +
+            mtgOSLink +
+            '" target="_blank"><img src="img/os-logo.png" height="22px"></a></div>'
+        );
+        mtgLooksLinkDiv = $(
+          '<div class="mtg-lookslink"><a href="' +
+            mtgLooksLink +
+            '" target="_blank"><img src="img/looks.svg" height="22px"></a></div>'
+        );
+        mtgX2y2LinkDiv = $(
+          '<div class="mtg-x2y2link"><a href="' +
+            mtgX2y2Link +
+            '" target="_blank"><img src="img/x2y2.png" height="22px"></a></div>'
+        );
+        mtgENSLinkDiv = $(
+          '<div class="mtg-enslink"><a href="' +
+            mtgENSLink +
+            '" target="_blank"><img src="img/ens-logo.png" height="22px"></a></div> '
+        );
+
+        mtgDiv.append(
+          mtgIdDiv,
+          mtgCardpriceDiv,
+          mtgNameDiv,
+          mtgPriceDiv,
+          mtgStateDiv,
+          mtgENSLinkDiv,
+          mtgOSLinkDiv,
+          mtgLooksLinkDiv,
+          mtgX2y2LinkDiv
+        );
+        $(".mtg-list").append(mtgDiv);
+      }
+
+      function fetchTokenPrices() {
+        if (
+          Date.now() - localStorage.pricesUpdatedAt >
+          CACHE_INVALIDATION_TIME
+        ) {
+          var parameters = "";
+          var count = 0;
+
+          console.log("fetching tokens");
+          for (var nameHash in mtgs) {
+            parameters += parameters.length > 0 ? "&" : "?";
+            parameters +=
+              "tokens=0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85:" + nameHash;
+            count++;
+            if (count >= TOKEN_API_LIMIT) {
+              fetchTokens(parameters);
+              count = 0;
+              parameters = "";
+            }
+          }
+          if (count > 0) {
+            fetchTokens(parameters);
+          }
+        }
+      }
+
+      function fetchTokens(parameters) {
+        parameters += "&limit=" + TOKEN_API_LIMIT;
+        fetch(TOKEN_API_URL + parameters)
+          .then((response) => response.json())
+          .then((data) => updateMtgs(data));
+      }
+
+      function updateMtgs(data) {
+        console.log("tokens received: " + Object.keys(data.tokens).length);
+        for (var key in data.tokens) {
+          const nameHash = data.tokens[key].tokenId;
+
+          if (data.tokens[key].floorAskPrice != null) {
+            mtgs[nameHash].price = data.tokens[key].floorAskPrice;
+          } else if (data.tokens[key].name == null) {
+            mtgs[nameHash].price = -1;
+          } else {
+            mtgs[nameHash].price = 0;
+          }
+
+          $("#" + nameHash + " > .mtg-name").css(
+            "background-color",
+            getCellColor(mtgs[nameHash].price)
+          );
+          $("#" + nameHash + " > .mtg-price").text(
+            getPriceLabel(mtgs[nameHash].price)
+          );
+        }
+
+        localStorage.pricesUpdatedAt = Date.now();
+        localStorage.mtgs = JSON.stringify(mtgs);
+      }
+
+      function filterList() {
+        var count = 0;
+        for (var nameHash in mtgs) {
+          var mtgVisible = true;
+          if (
+            $("#buy-now-filter").is(":checked") &&
+            mtgs[nameHash].price <= 0
+          ) {
+            mtgVisible = false;
+          }
+
+          if (mtgVisible) {
+            $("#" + nameHash).show();
+            count++;
+          } else {
+            $("#" + nameHash).hide();
+          }
+        }
+
+        updateListLengthInfo(count);
+      }
+
+      function sortList() {
+        var mtgElements = new Object();
+        for (var nameHash in mtgs) {
+          mtgElements[nameHash] = $("#" + nameHash).detach();
+        }
+
+        if ($("#sort-by-price").is(":checked")) {
+          var sortable = [];
+          var nonSortable = [];
+          for (var nameHash in mtgs) {
+            var mtgPriceObject = new Object();
+            mtgPriceObject.nameHash = nameHash;
+            mtgPriceObject.price = mtgs[nameHash].price;
+            if (mtgs[nameHash].price > 0) {
+              sortable.push(mtgPriceObject);
+            } else {
+              nonSortable.push(mtgPriceObject);
+            }
+          }
+
+          sortable.sort(function (a, b) {
+            return a.price - b.price;
+          });
+
+          for (var id in sortable) {
+            $(".mtg-list").append(mtgElements[sortable[id].nameHash]);
+          }
+
+          for (var id in nonSortable) {
+            $(".mtg-list").append(mtgElements[nonSortable[id].nameHash]);
+          }
+        } else {
+          for (var nameHash in mtgs) {
+            $(".mtg-list").append(mtgElements[nameHash]);
+          }
+        }
+      }
+
+      function getMtgHash(mtgName) {
+        const labelHash = ethers.utils.keccak256(
+          ethers.utils.toUtf8Bytes(mtgName)
+        );
+        const tokenId = ethers.BigNumber.from(labelHash).toString();
+        return tokenId;
+      }
+
+      function updateListLengthInfo(length) {
+        $(".list-length-info").text(length + " Items");
+      }
+      function updateListLengthInfo2(length) {
+        $(".list-length-info2").text(length + " Cardprice");
+      }
+      function getCellColor(mtgPrice) {
+        var cellColor = "#ffffff";
+        if (mtgPrice > 0) {
+          cellColor = "#a5c8ec";
+        }
+        return cellColor;
+      }
+
+      function getCardpriceLabel(mtgCardprice) {
+        return mtgCardprice > 0 ? mtgCardprice + "$" : "-";
+      }
+      function getPriceLabel(mtgPrice) {
+        return mtgPrice > 0 ? mtgPrice + "Ξ" : "-";
+      }
+
+
+    </script>
+  </body>
+</html>
