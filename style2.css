@@ -67,7 +67,7 @@ body {
 .mtg {
   border-style: solid;
   border-width: 0.1px;
-  border-color: white;
+  border-color: #82817f;
   padding: 5px;
   margin: 10px;
   display: grid;
@@ -81,7 +81,7 @@ body {
 .mtg-name {
   text-align: right;
   background-color: white;
-  color: black;
+  color: white;
   padding-right: 5px;
   font-weight: bold;
 }
@@ -158,7 +158,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: #383c3f;
   -webkit-transition: 0.4s;
   transition: 0.4s;
 }
@@ -170,17 +170,17 @@ body {
   width: 22px;
   left: 1px;
   bottom: 1px;
-  background-color: white;
+  background-color: #1a1b1d;
   -webkit-transition: 0.4s;
   transition: 0.4s;
 }
 
 input:checked + .slider {
-  background-color: #2196f3;
+  background-color: #096fc1;
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #2196f3;
+  box-shadow: 0 0 1px #096fc1;
 }
 
 input:checked + .slider:before {
